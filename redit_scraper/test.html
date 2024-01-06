@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Resizer</title>
+</head>
+<body>
+  <input type="file" id="videoInput" accept="video/*">
+  <button onclick="resizeAndDownload()">Resize and Download</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.min.js"></script>
+  <script>
+    async function resizeAndDownload() {
+      const input = document.getElementById('videoInput');
+      const file = input.files[0];
+
+      if (file) {
+        // Initialize FFmpeg
+        const ffmpeg = createFFmpeg({ log: true, corePath: "https://unpkg.com/@ffmpeg/core@0.10.0/dist/ffmpeg-core.js" });
+        await ffmpeg.load();
+
+        // Read the uploaded file
+        const data = await readFileAsync(file);
+        ffmpeg.FS('writeFile', 'input.mp4', new Uint8Array(data));
+
+        // Resize the video
+        await ffmpeg.run('-i', 'input.mp4', '-vf', 'scale=640:480', 'output.mp4');
+
+        // Read the resized video
+        const resizedData = ffmpeg.FS('readFile', 'output.mp4');
+
+        // Download the resized video
+        downloadFile(resizedData, 'resized_video.mp4');
+      } else {
+        console.error('No video selected');
+      }
+    }
+
+    function readFileAsync(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          resolve(event.target.result);
+        };
+        reader.onerror = (error) => {
+          reject(error);
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function downloadFile(data, fileName) {
+      const blob = new Blob([data.buffer], { type: 'video/mp4' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
